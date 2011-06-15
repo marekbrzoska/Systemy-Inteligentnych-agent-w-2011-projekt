@@ -104,13 +104,13 @@ handle_call({drop, Color, N}, {From,_}, #state{
             gen_server:cast(NextPlayer, {your_turn, NewState#state.board});
         {ok, NewBoard, _Max} ->
             NewState = State#state{board=NewBoard},
-            Reply = ok,
+            Reply = {ok, NewBoard},
             gen_server:cast(NextPlayer, {your_turn, NewState#state.board});
         {win, Color, NewBoard} ->
             NewState = State#state{win=Color,
                                    board=NewBoard},
             gen_server:cast(NextPlayer, {you_lose, NewState#state.board}),
-            Reply = you_win
+            Reply = {you_win, NewBoard}
     end,
     {reply, Reply, NewState#state{current=NextPlayer}};
 
