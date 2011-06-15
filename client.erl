@@ -66,7 +66,7 @@ handle_call(_Message, _From, State) ->
 
 handle_cast({your_turn, Board}, #state{server=Server, color=Color}=State) -> 
     {_Val, Col} = choose_column(Board, Color),
-    case gen_server:call({drop, Color, Col}, Server) of
+    case gen_server:call(Server, {drop, Color, Col}) of
         you_win ->
             error_logger:info_msg("Wygralem\n"),
             {stop, wygrana, State}; 
