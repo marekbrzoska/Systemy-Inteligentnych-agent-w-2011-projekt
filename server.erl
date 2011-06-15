@@ -23,7 +23,7 @@
 
 
 start_link(ArgList) -> 
-    gen_server:start_link({local, ?MODULE}, ?MODULE, ArgList, []).
+    gen_server:start_link({local, game_server}, ?MODULE, ArgList, []).
 
 
 %% ====================================
@@ -46,13 +46,16 @@ start_link(ArgList) ->
 %% ====================================
 
 init(_Arg) -> 
+    error_logger:info_report(init_started),
     Keys = lists:seq(1,?MAX),
     KV = lists:zip(Keys, lists:map(fun(_) -> [] end, Keys)),
     Board = dict:from_list(KV),
     State = #state{board = Board},
+    error_logger:info_report({init_done, State}),
     {ok, State}. 
 
 terminate(_Reason, _State) -> 
+    error_logger:info_report(duuuuuuuuuuuuuuupa___koniec),
     ok.
 
 code_change(_OldVsn, State, _Extra) -> 
@@ -73,8 +76,8 @@ handle_call(register, From, #state{a=A, b=B}=State) when A == undefined orelse B
 handle_call(register, _From, State) ->
     {reply, undefined, State};
 
-%handle_call({drop, _, _}, _From, #state{win = Win}=State) when Win /= undefined -> 
-handle_call({drop, _, _}, _From, State) -> %when Win /= undefined -> 
+handle_call({drop, _, _}, _From, #state{win = Win}=State) when Win /= undefined -> 
+%handle_call({drop, _, _}, _From, State) -> %when Win /= undefined -> 
     {reply, State, State};
 
 handle_call({drop, Color, N}, From, #state{
@@ -104,7 +107,8 @@ handle_call({drop, Color, N}, From, #state{
     {reply, Reply, NewState#state{current=NextPlayer}};
 
 handle_call(_Message, _From, State) -> 
-    {reply, unknown_call, State}.
+    error_logger:info_report(last_call),
+    {reply, State, State}.
 
 handle_cast(_Message, State) -> 
     {noreply, State}.
