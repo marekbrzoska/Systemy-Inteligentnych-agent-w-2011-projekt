@@ -36,7 +36,8 @@ start_link(ArgList) ->
         last_color = undefined :: atom(),
         nr_of_players = 0      :: integer(),
         a = undefined          :: pid(),
-        b = undefined          :: pid()
+        b = undefined          :: pid(),
+        current = undefined    :: pid()
     }).
 
 
@@ -61,35 +62,46 @@ code_change(_OldVsn, State, _Extra) ->
 %% gen_server handlers
 %% ------------------------------------
 
-handle_call(register, From, #state{a=A, b=B}) when A == undefined orelse B == undefined ->
+handle_call(register, From, #state{a=A, b=B}=State) when A == undefined orelse B == undefined ->
     {A2, B2, Reply} = case A of
         undefined -> {From, B, a};
         _         -> {A, From, b}
     end,
     NewState = State#state{a=A2, b=B2},
-    {reply, Reply, NewState}.
+    {reply, Reply, NewState};
 
-handle_call(_Message, _From, #state{win = Win}=State) when Win /= undefined -> 
+handle_call(register, _From, State) ->
+    {reply, undefined, State};
+
+%handle_call({drop, _, _}, _From, #state{win = Win}=State) when Win /= undefined -> 
+handle_call({drop, _, _}, _From, State) -> %when Win /= undefined -> 
     {reply, State, State};
-handle_call({drop, Color, N}, _From, #state{last_color=LastColor, 
-                                            win=undefined,
-                                            board=Board}=State) 
-                                    when LastColor /= Color ->
-    case drop(Color, N, Board) of
+
+handle_call({drop, Color, N}, From, #state{
+                                           win=undefined,
+                                           board=Board,
+                                           a=A,
+                                           b=B,
+                                           current=From}=State) 
+                                    when   (From == A andalso Color == a) 
+                                    orelse (From == B andalso Color == b) ->
+    NextPlayer = case From of A -> B; B -> A end,
+    case common:drop(Color, N, Board) of
         false ->
-            NewState = State#state{last_color=Color},
-            Reply = incorrect_move;
-        {ok, NewBoard} ->
-            NewState = State#state{last_color=Color,
-                                   board=NewBoard},
-            Reply = ok;
+            NewState = State,
+            Reply = incorrect_move,
+            gen_server:cast(NextPlayer, {your_turn, NewState#state.board});
+        {ok, NewBoard, _Max} ->
+            NewState = State#state{board=NewBoard},
+            Reply = ok,
+            gen_server:cast(NextPlayer, {your_turn, NewState#state.board});
         {win, Color, NewBoard} ->
-            NewState = State#state{last_color=Color,
-                                   win=Color,
+            NewState = State#state{win=Color,
                                    board=NewBoard},
+            gen_server:cast(NextPlayer, {you_lose, NewState#state.board}),
             Reply = you_win
     end,
-    {reply, Reply, NewState};
+    {reply, Reply, NewState#state{current=NextPlayer}};
 
 handle_call(_Message, _From, State) -> 
     {reply, unknown_call, State}.
