@@ -31,9 +31,12 @@ start_link(ArgList) ->
 %% ====================================
 
 -record(state, {
-            win = undefined,
-            board             :: dict(),
-            last_color        :: atom()
+        win = undefined        :: atom(),
+        board                  :: dict(),
+        last_color = undefined :: atom(),
+        nr_of_players = 0      :: integer(),
+        a = undefined          :: pid(),
+        b = undefined          :: pid()
     }).
 
 
@@ -44,7 +47,8 @@ start_link(ArgList) ->
 init(_Arg) -> 
     Keys = lists:seq(1,?MAX),
     KV = lists:zip(Keys, lists:map(fun(_) -> [] end, Keys)),
-    State = dict:from_list(KV),
+    Board = dict:from_list(KV),
+    State = #state{board = Board},
     {ok, State}. 
 
 terminate(_Reason, _State) -> 
@@ -56,6 +60,14 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------
 %% gen_server handlers
 %% ------------------------------------
+
+handle_call(register, From, #state{a=A, b=B}) when A == undefined orelse B == undefined ->
+    {A2, B2, Reply} = case A of
+        undefined -> {From, B, a};
+        _         -> {A, From, b}
+    end,
+    NewState = State#state{a=A2, b=B2},
+    {reply, Reply, NewState}.
 
 handle_call(_Message, _From, #state{win = Win}=State) when Win /= undefined -> 
     {reply, State, State};
