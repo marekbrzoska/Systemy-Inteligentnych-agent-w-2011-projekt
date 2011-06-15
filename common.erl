@@ -26,7 +26,7 @@ drop(Column, State, Color) ->
                 Max >= 3 -> 
                     {win, Color, NewState};
                 true ->      
-                    {ok, NewState}
+                    {ok, NewState, Max}
             end
     end.
 
