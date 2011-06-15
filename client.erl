@@ -26,7 +26,7 @@
 
 
 start_link(ArgList) -> 
-    gen_server:start_link({local, ?MODULE}, ?MODULE, ArgList, []).
+    gen_server:start_link(?MODULE, ArgList, []).
 
 
 
@@ -68,16 +68,17 @@ handle_cast({your_turn, Board}, #state{server=Server, color=Color}=State) ->
     {_Val, Col} = choose_column(Board, Color),
     case gen_server:call(Server, {drop, Color, Col}) of
         you_win ->
+            error_logger:info_report({"Polozylem", Color, Col}),
             error_logger:info_msg("Wygralem\n"),
             {stop, wygrana, State}; 
         ok ->
-            error_logger:info_msg("Polozylem\n"), 
+            error_logger:info_report({"Polozylem", Color, Col}), 
             {noreply, State};
-        _ ->
-            error_logger:info_msg("Niedozwolony ruch\n"), 
+        Error ->
+            error_logger:info_report({"Niedozwolony ruch\n", Error}), 
             {noreply, State}
     end;
-handle_cast(you_lose, State) -> 
+handle_cast({you_lose, _}, State) -> 
     error_logger:info_msg("Przegralem\n"),
     {stop, przegrana, State}. 
 
@@ -106,7 +107,7 @@ choose_column(Board, Color, 8, BestVal, BestCol) ->
             {BestVal, BestCol}
     end;
 choose_column(Board, Color, Col, BestVal, BestCol) ->
-    MyVal = computeVal(Board, Color, 8),
+    MyVal = computeVal(Board, Color, Col),
     if
         MyVal > BestVal ->
             choose_column(Board, Color, Col+1, MyVal, Col);

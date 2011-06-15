@@ -65,12 +65,20 @@ code_change(_OldVsn, State, _Extra) ->
 %% gen_server handlers
 %% ------------------------------------
 
-handle_call(register, {From, _}, #state{a=A, b=B}=State) when A == undefined orelse B == undefined ->
+handle_call(register, {From, _}, #state{a=A, b=B, board=Board}=State) when A == undefined orelse B == undefined ->
     {A2, B2, Reply} = case A of
         undefined -> {From, B, a};
         _         -> {A, From, b}
     end,
-    NewState = State#state{a=A2, b=B2},
+    if 
+        A2 /= undefined andalso B2 /= undefined ->
+            Current = A2,
+            gen_server:cast(Current, {your_turn, Board});
+        true -> 
+            Current = undefined
+    end,
+            
+    NewState = State#state{a=A2, b=B2, current=Current},
     {reply, Reply, NewState};
 
 handle_call(register, _From, State) ->
@@ -89,7 +97,7 @@ handle_call({drop, Color, N}, {From,_}, #state{
                                     when   (From == A andalso Color == a) 
                                     orelse (From == B andalso Color == b) ->
     NextPlayer = case From of A -> B; B -> A end,
-    case common:drop(Color, N, Board) of
+    case common:drop(N, Board, Color) of
         false ->
             NewState = State,
             Reply = incorrect_move,
@@ -106,9 +114,9 @@ handle_call({drop, Color, N}, {From,_}, #state{
     end,
     {reply, Reply, NewState#state{current=NextPlayer}};
 
-handle_call(_Message, _From, State) -> 
+handle_call(Message, From, State) -> 
     error_logger:info_report(last_call),
-    {reply, State, State}.
+    {reply, {State, Message, From}, State}.
 
 handle_cast(_Message, State) -> 
     {noreply, State}.

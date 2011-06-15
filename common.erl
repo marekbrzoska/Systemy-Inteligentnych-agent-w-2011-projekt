@@ -7,6 +7,8 @@ example() ->
     dict:from_list([{1, []}, {2, []}, {3, []}, {4, []}, {5, []}, {6, []}, {7, []}, {8, []}]).
 
 drop(Column, State, Color) ->
+    %error_logger:error_report({common_drop, State}),
+    %error_logger:error_report({common_drop, dict:fetch_keys(State)}),
     List = dict:fetch(Column, State),
     Len = length(List) + 1,
     if 
