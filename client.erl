@@ -6,7 +6,7 @@
 %% API exports
 %% ===================================
 
--export([]).
+-export([start_link/1]).
 
 %% ===================================
 %% gen_server exports
@@ -25,8 +25,8 @@
 %% ====================================
 
 
-% start_link(ArgList) -> 
-%     gen_server:start_link({local, ?MODULE}, ?MODULE, ArgList, []).
+start_link(ArgList) -> 
+    gen_server:start_link({local, ?MODULE}, ?MODULE, ArgList, []).
 
 
 
@@ -34,19 +34,21 @@
 %% gen_server callbacks
 %% ====================================
 
-init([Server]) -> 
+init(Server) -> 
     case gen_server:call(Server, register) of
-        a -> 
+        a ->
+            error_logger:info_msg("Mam kolor a\n"), 
             State = #state{server=Server, color=a},
             random:seed(),
             {ok, State};
         b ->
+            error_logger:info_msg("Mam kolor b\n"),
             State = #state{server=Server, color=b},
             random:seed(),
             {ok, State};
         undefined ->
-            error_logger:info_msg("Koncze"),
-            {stop, "Koncze"}
+            error_logger:info_msg("Koncze\n"),
+            {stop, koniec}
     end.
 
 terminate(_Reason, _State) -> 
@@ -66,12 +68,17 @@ handle_cast({your_turn, Board}, #state{server=Server, color=Color}=State) ->
     {_Val, Col} = choose_column(Board, Color),
     case gen_server:call({drop, Color, Col}, Server) of
         you_win ->
-            error_logger:info_msg("Wygralem"),
+            error_logger:info_msg("Wygralem\n"),
             {stop, wygrana, State}; 
-        _ -> {noreply, State}
+        ok ->
+            error_logger:info_msg("Polozylem\n"), 
+            {noreply, State};
+        _ ->
+            error_logger:info_msg("Niedozwolony ruch\n"), 
+            {noreply, State}
     end;
 handle_cast(you_lose, State) -> 
-    error_logger:info_msg("Przegralem"),
+    error_logger:info_msg("Przegralem\n"),
     {stop, przegrana, State}. 
 
 
