@@ -65,7 +65,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% gen_server handlers
 %% ------------------------------------
 
-handle_call(register, From, #state{a=A, b=B}=State) when A == undefined orelse B == undefined ->
+handle_call(register, {From, _}, #state{a=A, b=B}=State) when A == undefined orelse B == undefined ->
     {A2, B2, Reply} = case A of
         undefined -> {From, B, a};
         _         -> {A, From, b}
@@ -80,7 +80,7 @@ handle_call({drop, _, _}, _From, #state{win = Win}=State) when Win /= undefined 
 %handle_call({drop, _, _}, _From, State) -> %when Win /= undefined -> 
     {reply, State, State};
 
-handle_call({drop, Color, N}, From, #state{
+handle_call({drop, Color, N}, {From,_}, #state{
                                            win=undefined,
                                            board=Board,
                                            a=A,
