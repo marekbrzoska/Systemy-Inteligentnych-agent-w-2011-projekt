@@ -51,7 +51,7 @@ init(_Arg) ->
     KV = lists:zip(Keys, lists:map(fun(_) -> [] end, Keys)),
     Board = dict:from_list(KV),
     State = #state{board = Board},
-    error_logger:info_report({init_done, State}),
+    %error_logger:info_report({init_done, State}),
     {ok, State}. 
 
 terminate(_Reason, _State) -> 
@@ -83,6 +83,7 @@ handle_call(register, {From, _}, #state{a=A, b=B, board=Board}=State) when A == 
 
 handle_call(register, _From, State) ->
     {reply, undefined, State};
+
 
 handle_call({drop, _, _}, _From, #state{win = Win}=State) when Win /= undefined -> 
 %handle_call({drop, _, _}, _From, State) -> %when Win /= undefined -> 
@@ -117,6 +118,17 @@ handle_call({drop, Color, N}, {From,_}, #state{
 handle_call(Message, From, State) -> 
     error_logger:info_report(last_call),
     {reply, {State, Message, From}, State}.
+
+handle_cast(restart, #state{win=Winner}) when Winner /= undefined->
+    error_logger:info_report([{restarting, now}, {last_winner, Winner}]),
+    {ok, State} = init(any),
+    {noreply, State};
+
+handle_cast(brutal_restart, _) ->
+    error_logger:info_report([{restarting, now}
+                            , {breaking_game, no_winner}]),
+    {ok, State} = init(any),
+    {noreply, State};
 
 handle_cast(_Message, State) -> 
     {noreply, State}.
