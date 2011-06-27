@@ -26,7 +26,7 @@
 
 
 start_link(ArgList) -> 
-    gen_server:start_link({local, ?MODULE}, ?MODULE, ArgList, []).
+    gen_server:start_link(?MODULE, ArgList, []).
 
 
 
@@ -39,12 +39,14 @@ init(Server) ->
         a ->
             error_logger:info_msg("Mam kolor a\n"), 
             State = #state{server=Server, color=a},
-            random:seed(),
+            {A1,A2,A3} = now(),
+            random:seed(A1, A2, A3),
             {ok, State};
         b ->
             error_logger:info_msg("Mam kolor b\n"),
             State = #state{server=Server, color=b},
-            random:seed(),
+            {A1,A2,A3} = now(),
+            random:seed(A1, A2, A3),
             {ok, State};
         undefined ->
             error_logger:info_msg("Koncze\n"),
@@ -65,21 +67,24 @@ handle_call(_Message, _From, State) ->
     {reply, unknown_call, State}.
 
 handle_cast({your_turn, Board}, #state{server=Server, color=Color}=State) -> 
+    timer:sleep(1000),
     {_Val, Col} = choose_column(Board, Color),
     case gen_server:call(Server, {drop, Color, Col}) of
-        you_win ->
-            error_logger:info_msg("Wygralem\n"),
-            {stop, wygrana, State}; 
-        ok ->
-            error_logger:info_msg("Polozylem\n"), 
+        {you_win, NewBoard} ->
+            common:display(NewBoard),
+            error_logger:info_report({"Polozylem i wygralem", Color, Col}),
+            {noreply, State}; 
+        {ok, NewBoard} ->
+            common:display(NewBoard),
+            error_logger:info_report({"Polozylem", Color, Col}), 
             {noreply, State};
-        _ ->
-            error_logger:info_msg("Niedozwolony ruch\n"), 
+        Error ->
+            error_logger:info_report({"Niedozwolony ruch\n", Error}), 
             {noreply, State}
     end;
-handle_cast(you_lose, State) -> 
-    error_logger:info_msg("Przegralem\n"),
-    {stop, przegrana, State}. 
+handle_cast({you_lose, _}, #state{color=Color}=State) -> 
+    error_logger:info_report({"Przegralem", Color}),
+    {noreply, State}. 
 
 
 handle_info(_Info, State) -> 
@@ -106,7 +111,7 @@ choose_column(Board, Color, 8, BestVal, BestCol) ->
             {BestVal, BestCol}
     end;
 choose_column(Board, Color, Col, BestVal, BestCol) ->
-    MyVal = computeVal(Board, Color, 8),
+    MyVal = computeVal(Board, Color, Col),
     if
         MyVal > BestVal ->
             choose_column(Board, Color, Col+1, MyVal, Col);
@@ -126,12 +131,12 @@ getOppColor(_) -> undefined.
 computeVal(Board, Color, Col) ->
     Val = common:drop(Col, Board, Color), 
     case Val of
-        {win, _Color, _NewBoard} -> 15;
-        false -> 0;
-        {ok, _NewBoard, Max} ->
+        {win, _, _} -> 15;
+        {ok, _, Max} ->
             OppColor = getOppColor(Color),
-            case common:drop(Col, Board, OppColor) of
-                {win, _OppColor, _NewBoard} -> 14;
+            OppVal = common:drop(Col, Board, OppColor),
+            case OppVal of
+                {win, _, _} -> 14;
                 _ ->
                     random:uniform(4) + Max * 4
             end;

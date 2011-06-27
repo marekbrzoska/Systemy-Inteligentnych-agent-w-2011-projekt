@@ -6,7 +6,13 @@
 example() ->
     dict:from_list([{1, []}, {2, []}, {3, []}, {4, []}, {5, []}, {6, []}, {7, []}, {8, []}]).
 
+display(Board) ->
+    List = lists:map(fun(I) -> lists:map(fun(X) -> case X of a -> o; b -> x end end, lists:reverse(dict:fetch(I, Board))) end, lists:seq(1, 8)),
+    io:format("~p\n~p\n~p\n~p\n~p\n~p\n~p\n~p\n", List).
+
 drop(Column, State, Color) ->
+    %error_logger:error_report({common_drop, State}),
+    %error_logger:error_report({common_drop, dict:fetch_keys(State)}),
     List = dict:fetch(Column, State),
     Len = length(List) + 1,
     if 
