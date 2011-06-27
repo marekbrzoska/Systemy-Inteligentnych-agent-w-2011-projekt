@@ -8,7 +8,7 @@
 %% API exports
 %% ===================================
 
--export([start_link/1]).
+-export([start_link/1, restart/1, restart/0]).
 
 %% ===================================
 %% gen_server exports
@@ -25,6 +25,11 @@
 start_link(ArgList) -> 
     gen_server:start_link({local, game_server}, ?MODULE, ArgList, []).
 
+restart() ->
+    gen_server:cast(game_server, restart).
+
+restart(brutal) ->
+    gen_server:cast(game_server, brutal_restart).
 
 %% ====================================
 %% internal state
