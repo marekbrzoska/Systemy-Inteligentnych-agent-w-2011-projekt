@@ -1,4 +1,4 @@
--module(client).
+-module(smarter_client).
 
 -behaviour(gen_server).
 
@@ -132,16 +132,33 @@ computeVal(Board, Color, Col) ->
     Val = common:drop(Col, Board, Color), 
     case Val of
         {win, _, _} -> 15;
-        {ok, _, Max} ->
+        {ok, NewBoard, Max} ->
             OppColor = getOppColor(Color),
             OppVal = common:drop(Col, Board, OppColor),
             case OppVal of
-                {win, _, _} -> 14;
+                {win, _, _} -> 
+                	case checkNextTurn(NewBoard, OppColor) of
+                		win    -> 13;
+                		no_win -> 14
+                	end;
                 _ ->
-                    random:uniform(4) + Max * 4
+                	case checkNextTurn(NewBoard, OppColor) of
+                		win    -> random:uniform(2) + Max * 2;
+                		no_win -> random:uniform(2) + Max * 2 + 6
+                	end
             end;
         _ -> 0                      
     end.
+
+checkNextTurn(Board, Color) -> checkNextTurn(Board, Color, 1).
+
+checkNextTurn(_Board, _Color, 9) -> no_win;
+checkNextTurn(Board, Color, Col) -> 
+	Val = common:drop(Col, Board, Color), 
+	case Val of
+		{win, _, _} -> win;
+		_ -> checkNextTurn(Board, Color, Col + 1)
+	end.
 
 
 
