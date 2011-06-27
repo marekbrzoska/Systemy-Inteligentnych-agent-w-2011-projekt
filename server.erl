@@ -76,6 +76,15 @@ handle_call(register, {From, _}, #state{a=A, b=B}=State) when A == undefined ore
 handle_call(register, _From, State) ->
     {reply, undefined, State};
 
+handle_call(unregister, {From, _}, #state{a=A ,b=B ,win=undefined}=State) ->
+    {NewA, NewB} = case From of
+        A -> {undefined, B};
+        B -> {A, undefined}
+    end,
+    {reply, ok, State#state{a=NewA, b=NewB}};
+
+
+
 handle_call({drop, _, _}, _From, #state{win = Win}=State) when Win /= undefined -> 
 %handle_call({drop, _, _}, _From, State) -> %when Win /= undefined -> 
     {reply, State, State};
