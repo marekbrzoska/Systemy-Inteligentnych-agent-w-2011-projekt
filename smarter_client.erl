@@ -6,7 +6,7 @@
 %% API exports
 %% ===================================
 
--export([start_link/1]).
+-export([start/0, start_link/1]).
 
 %% ===================================
 %% gen_server exports
@@ -24,9 +24,10 @@
 %% external API functions
 %% ====================================
 
+start() -> start_link(game_server).
 
 start_link(ArgList) -> 
-    gen_server:start_link(?MODULE, ArgList, []).
+    gen_server:start(?MODULE, ArgList, []).
 
 
 
@@ -70,13 +71,10 @@ handle_cast({your_turn, Board}, #state{server=Server, color=Color}=State) ->
     timer:sleep(2000),
     {_Val, Col} = choose_column(Board, Color),
     case gen_server:call(Server, {drop, Color, Col}) of
-        {you_win, NewBoard} ->
-            common:display(NewBoard),
+        {you_win, _NewBoard} ->
             error_logger:info_report({"Polozylem i wygralem", Color, Col}),
             {noreply, State}; 
-        {ok, NewBoard} ->
-            common:display(NewBoard),
-            error_logger:info_report({"Polozylem", Color, Col}), 
+        {ok, _NewBoard} ->
             {noreply, State};
         Error ->
             error_logger:info_report({"Niedozwolony ruch\n", Error}), 

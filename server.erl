@@ -8,7 +8,7 @@
 %% API exports
 %% ===================================
 
--export([start_link/1, restart/1, restart/0]).
+-export([start/0, start_link/1, restart/1, restart/0]).
 
 %% ===================================
 %% gen_server exports
@@ -21,6 +21,7 @@
 %% external API functions
 %% ====================================
 
+start() -> start_link(ok).
 
 start_link(ArgList) -> 
     gen_server:start_link({local, game_server}, ?MODULE, ArgList, []).
@@ -51,7 +52,6 @@ restart(brutal) ->
 %% ====================================
 
 init(_Arg) -> 
-    error_logger:info_report(init_started),
     Keys = lists:seq(1,?MAX),
     KV = lists:zip(Keys, lists:map(fun(_) -> [] end, Keys)),
     Board = dict:from_list(KV),
@@ -60,7 +60,7 @@ init(_Arg) ->
     {ok, State}. 
 
 terminate(_Reason, _State) -> 
-    error_logger:info_report(duuuuuuuuuuuuuuupa___koniec),
+    error_logger:info_report(koniec),
     ok.
 
 code_change(_OldVsn, State, _Extra) -> 
@@ -111,12 +111,14 @@ handle_call({drop, Color, N}, {From,_}, #state{
         {ok, NewBoard, _Max} ->
             NewState = State#state{board=NewBoard},
             Reply = {ok, NewBoard},
+            common:display(NewBoard),
             gen_server:cast(NextPlayer, {your_turn, NewState#state.board});
         {win, Color, NewBoard} ->
             NewState = State#state{win=Color,
                                    board=NewBoard},
             gen_server:cast(NextPlayer, {you_lose, NewState#state.board}),
-            Reply = {you_win, NewBoard}
+            Reply = {you_win, NewBoard},
+            common:display(NewBoard)
     end,
     {reply, Reply, NewState#state{current=NextPlayer}};
 
