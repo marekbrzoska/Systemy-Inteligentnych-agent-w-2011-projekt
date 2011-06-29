@@ -41,8 +41,8 @@ restart(brutal) ->
         board                  :: dict(),
         last_color = undefined :: atom(),
         nr_of_players = 0      :: integer(),
-        a = undefined          :: pid(),
-        b = undefined          :: pid(),
+        o = undefined          :: pid(),
+        x = undefined          :: pid(),
         current = undefined    :: pid()
     }).
 
@@ -70,10 +70,10 @@ code_change(_OldVsn, State, _Extra) ->
 %% gen_server handlers
 %% ------------------------------------
 
-handle_call(register, {From, _}, #state{a=A, b=B, board=Board}=State) when A == undefined orelse B == undefined ->
+handle_call(register, {From, _}, #state{o=A, x=B, board=Board}=State) when A == undefined orelse B == undefined ->
     {A2, B2, Reply} = case A of
-        undefined -> {From, B, a};
-        _         -> {A, From, b}
+        undefined -> {From, B, o};
+        _         -> {A, From, x}
     end,
     if 
         A2 /= undefined andalso B2 /= undefined ->
@@ -83,7 +83,7 @@ handle_call(register, {From, _}, #state{a=A, b=B, board=Board}=State) when A == 
             Current = undefined
     end,
             
-    NewState = State#state{a=A2, b=B2, current=Current},
+    NewState = State#state{o=A2, x=B2, current=Current},
     {reply, Reply, NewState};
 
 handle_call(register, _From, State) ->
@@ -97,11 +97,11 @@ handle_call({drop, _, _}, _From, #state{win = Win}=State) when Win /= undefined 
 handle_call({drop, Color, N}, {From,_}, #state{
                                            win=undefined,
                                            board=Board,
-                                           a=A,
-                                           b=B,
+                                           o=A,
+                                           x=B,
                                            current=From}=State) 
-                                    when   (From == A andalso Color == a) 
-                                    orelse (From == B andalso Color == b) ->
+                                    when   (From == A andalso Color == o) 
+                                    orelse (From == B andalso Color == x) ->
     NextPlayer = case From of A -> B; B -> A end,
     case common:drop(N, Board, Color) of
         false ->

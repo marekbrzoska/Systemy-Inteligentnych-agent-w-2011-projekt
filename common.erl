@@ -7,7 +7,7 @@ example() ->
     dict:from_list([{1, []}, {2, []}, {3, []}, {4, []}, {5, []}, {6, []}, {7, []}, {8, []}]).
 
 display(Board) ->
-    List = lists:map(fun(I) -> lists:map(fun(X) -> case X of a -> o; b -> x end end, lists:reverse(dict:fetch(I, Board))) end, lists:seq(1, 8)),
+    List = lists:map(fun(I) -> lists:map(fun(X) -> case X of o -> o; x -> x end end, lists:reverse(dict:fetch(I, Board))) end, lists:seq(1, 8)),
     io:format("===================\n~p\n~p\n~p\n~p\n~p\n~p\n~p\n~p\n===================\n", List).
 
 drop(Column, State, Color) when Column =< 8 andalso Column >= 1 ->
