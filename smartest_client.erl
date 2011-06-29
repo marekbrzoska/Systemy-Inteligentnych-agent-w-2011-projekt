@@ -37,15 +37,15 @@ start_link(ArgList) ->
 
 init(Server) -> 
     case gen_server:call(Server, register) of
-        a ->
-            error_logger:info_msg("Mam kolor a\n"), 
-            State = #state{server=Server, color=a},
+        o ->
+            error_logger:info_msg("Mam kolor o\n"), 
+            State = #state{server=Server, color=o},
             {A1,A2,A3} = now(),
             random:seed(A1, A2, A3),
             {ok, State};
-        b ->
-            error_logger:info_msg("Mam kolor b\n"),
-            State = #state{server=Server, color=b},
+        x ->
+            error_logger:info_msg("Mam kolor x\n"),
+            State = #state{server=Server, color=x},
             {A1,A2,A3} = now(),
             random:seed(A1, A2, A3),
             {ok, State};
@@ -122,8 +122,8 @@ choose_column(Board, Color, Col, BestVal, BestCol) ->
             choose_column(Board, Color, Col+1, BestVal, BestCol)
     end.
 
-getOppColor(a) -> b;
-getOppColor(b) -> a;
+getOppColor(o) -> x;
+getOppColor(x) -> o;
 getOppColor(_) -> undefined.
 
 computeVal(Board, Color, Col) ->
@@ -179,7 +179,7 @@ checkWinningMove(Board, Color, Column) ->
 					LenLeft = length(dict:fetch(Column - Left - 1, Board)),
 					LenRight = length(dict:fetch(Column + Right + 1, Board)),
 					if 
-						(LenLeft == LenRight) and (LenRight == Len - 1) -> 
+						(LenLeft == LenRight) and (LenRight == Len) -> 
 							{ok, NewBoard, _Max} = common:drop(Column, Board, Color),
 							OppColor = getOppColor(Color),
 							case checkNextTurn(NewBoard, OppColor) of
