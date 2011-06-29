@@ -8,7 +8,7 @@ example() ->
 
 display(Board) ->
     List = lists:map(fun(I) -> lists:map(fun(X) -> case X of o -> o; x -> x end end, lists:reverse(dict:fetch(I, Board))) end, lists:seq(1, 8)),
-    io:format("===================\n~p\n~p\n~p\n~p\n~p\n~p\n~p\n~p\n===================\n", List).
+    io:format("===================\n1~p\n2~p\n3~p\n4~p\n5~p\n6~p\n7~p\n8~p\n===================\n", List).
 
 drop(Column, State, Color) when Column =< 8 andalso Column >= 1 ->
     %error_logger:error_report({common_drop, State}),
