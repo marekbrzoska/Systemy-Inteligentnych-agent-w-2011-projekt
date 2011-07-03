@@ -6,7 +6,7 @@
 %% API exports
 %% ===================================
 
--export([start/0, start_link/1]).
+-export([start/0]).
 
 %% ===================================
 %% gen_server exports
@@ -24,11 +24,12 @@
 %% external API functions
 %% ====================================
 
-start() -> start_link(game_server).
+start() -> start(game_server).
 
-start_link(ArgList) -> 
+start(ArgList) ->
+	error_logger:info_msg("Proba polaczenia z serwerem gry...\n"),
+    timer:sleep(2000), 
     gen_server:start(?MODULE, ArgList, []).
-
 
 
 %% ====================================
@@ -36,7 +37,7 @@ start_link(ArgList) ->
 %% ====================================
 
 init(Server) -> 
-    case gen_server:call(Server, register) of
+    try gen_server:call(Server, register) of
         o ->
             error_logger:info_msg("Mam kolor o\n"), 
             State = #state{server=Server, color=o},
@@ -49,8 +50,12 @@ init(Server) ->
             {A1,A2,A3} = now(),
             random:seed(A1, A2, A3),
             {ok, State};
-        undefined ->
-            error_logger:info_msg("Koncze\n"),
+        _ ->
+            error_logger:info_msg("Nieznana odpowiedz. Sprobuj ponownie\n"),
+            {stop, koniec}
+    catch
+    	_:_ ->
+    		error_logger:info_msg("Serwer nie odpowiada. Sprobuj ponownie.\n"),
             {stop, koniec}
     end.
 
@@ -70,20 +75,23 @@ handle_call(_Message, _From, State) ->
 handle_cast({your_turn, Board}, #state{server=Server, color=Color}=State) -> 
     timer:sleep(2000),
     {_Val, Col} = choose_column(Board, Color),
-    case gen_server:call(Server, {drop, Color, Col}) of
+    try gen_server:call(Server, {drop, Color, Col}) of
         {you_win, _NewBoard} ->
-            error_logger:info_report({"Polozylem i wygralem", Color, Col}),
-            {noreply, State}; 
+            error_logger:info_report({Color, "Wygralem"}),
+            {noreply, wygrana}; 
         {ok, _NewBoard} ->
             {noreply, State};
-        Error ->
-            error_logger:info_report({"Niedozwolony ruch\n", Error}), 
+        _Error ->
+            error_logger:info_report({Color, "Wykonalem niedozwolony ruch"}), 
             {noreply, State}
+    catch
+    	_:_ -> 
+    		error_logger:info_report({Color, "Serwer nie odpowiedzial. Koniec gry"}), 
+            {noreply, koniec}
     end;
-handle_cast({you_lose, _}, #state{color=Color}=State) -> 
-    error_logger:info_report({"Przegralem", Color}),
-    {noreply, State}. 
-
+handle_cast({you_lose, _}, #state{color=Color}) -> 
+    error_logger:info_report({Color, "Przegralem"}),
+    {noreply, przegrana}. 
 
 handle_info(_Info, State) -> 
     {noreply, State}.
@@ -92,7 +100,7 @@ handle_info(_Info, State) ->
 %% internal helper functions
 %% ------------------------------------
 
-choose_column(Board, Color) ->
+choose_column(Board, Color) -> %wybor najlepszej kolumny (liczymy wartosci dla kolejnych mozliwych ruchow, wybieramy najlepszy ruch (kolumne))
     choose_column(Board, Color, 1, 0, 0).
     
 choose_column(Board, Color, 8, BestVal, BestCol) ->
@@ -126,29 +134,29 @@ getOppColor(o) -> x;
 getOppColor(x) -> o;
 getOppColor(_) -> undefined.
 
-computeVal(Board, Color, Col) ->
+computeVal(Board, Color, Col) -> %obliczenie wartosci dla danego ruchu (wrzucenie do danej kolumny)
     Val = common:drop(Col, Board, Color), 
     case Val of
-        {win, _, _} -> 17;
+        {win, _, _} -> 17; %moja wygrana po ruchu
         {ok, NewBoard, Max} ->
             OppColor = getOppColor(Color),
             OppVal = common:drop(Col, Board, OppColor),
             case OppVal of
-                {win, _, _} -> 
+                {win, _, _} -> %przeciwnik wygra wrzucajac do tej kolumny ruchu (chcemy tu wrzucic)
                 	case checkNextTurn(NewBoard, OppColor) of
-                		win    -> 15;
-                		no_win -> 16
+                		win    -> 15; %przeciwnik ma ruch wygrywajacy po naszym ruchu
+                		no_win -> 16  %nie ma
                 	end;
-                _ ->
+                _ -> %przeciwnik nie wygra
                 	case checkWinningMove(Board, Color, Col) of
-                		yes -> 14;
+                		yes -> 14; %mamy ruch wygrywajacy (utworzymy trzy krazki w linii, niezablokowane)
                 		no ->
                 			case checkWinningMove(Board, OppColor, Col) of
-                				yes -> 13;
-                				no ->                	                	
+                				yes -> 13; %przeciwnik bedzie mial taki ruch wygrywajacy po wrzuceniu tutaj
+                				no -> %zadne z powyzszych, chcemy utworzyc jak najdluzszy lancuch                	                	
 									case checkNextTurn(NewBoard, OppColor) of
-										win    -> random:uniform(2) + Max * 2;
-										no_win -> random:uniform(2) + Max * 2 + 6
+										win    -> random:uniform(2) + Max * 2; %po naszym ruchu przeciwnik ma ruch wygrywajacy, mniejsza punktacja
+										no_win -> random:uniform(2) + Max * 2 + 6 %nie ma, wieksza punktacja
 									end
 							end
 					end
@@ -156,7 +164,7 @@ computeVal(Board, Color, Col) ->
         _ -> 0                      
     end.
 
-checkNextTurn(Board, Color) -> checkNextTurn(Board, Color, 1).
+checkNextTurn(Board, Color) -> checkNextTurn(Board, Color, 1). %sprawdzenie czy po naszym ruchu przeciwnik ma ruch wygrywajacy
 
 checkNextTurn(_Board, _Color, 9) -> no_win;
 checkNextTurn(Board, Color, Col) -> 
@@ -167,7 +175,7 @@ checkNextTurn(Board, Color, Col) ->
 	end.
 
 
-checkWinningMove(Board, Color, Column) ->
+checkWinningMove(Board, Color, Column) -> %sprawdzenie czy mozemy doprowadzic do sytuacji _xxx_ (pewne wygrana), jesli nie, to czy przeciwnik moze
 	Len = length(dict:fetch(Column, Board)),
 	Left = common:left(Board, Column, Color, Len + 1, 0),
 	Right = common:right(Board, Column, Color, Len + 1, 0),

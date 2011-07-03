@@ -24,7 +24,15 @@
 start() -> start_link(ok).
 
 start_link(ArgList) -> 
-    gen_server:start_link({local, game_server}, ?MODULE, ArgList, []).
+	error_logger:info_report({serwer, "Proba wystartowania serwera...\n"}),
+	timer:sleep(500),
+	try
+    	gen_server:start_link({local, game_server}, ?MODULE, ArgList, [])
+    catch
+    	_:_ -> 
+    		error_logger:info_report({serwer, "Serwer jest juz wystartowany\n"}),
+    		koniec
+    end.
 
 restart() ->
     gen_server:cast(game_server, restart).
@@ -56,11 +64,11 @@ init(_Arg) ->
     KV = lists:zip(Keys, lists:map(fun(_) -> [] end, Keys)),
     Board = dict:from_list(KV),
     State = #state{board = Board},
-    %error_logger:info_report({init_done, State}),
+    error_logger:info_report({serwer, "Serwer wystartowal\n"}),
     {ok, State}. 
 
 terminate(_Reason, _State) -> 
-    error_logger:info_report(koniec),
+    error_logger:info_report({serwer, "Serwer zakonczyl dzialanie\n"}),
     ok.
 
 code_change(_OldVsn, State, _Extra) -> 
