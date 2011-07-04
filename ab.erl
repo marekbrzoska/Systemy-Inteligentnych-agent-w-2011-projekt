@@ -1,4 +1,4 @@
--module(smartest_client).
+-module(ab).
 
 -behaviour(gen_server).
 
@@ -73,7 +73,6 @@ handle_call(_Message, _From, State) ->
     {reply, unknown_call, State}.
 
 handle_cast({your_turn, Board}, #state{server=Server, color=Color}=State) -> 
-    timer:sleep(2000),
     {_Val, Col} = choose_column(Board, Color),
     try gen_server:call(Server, {drop, Color, Col}) of
         {you_win, _NewBoard} ->
@@ -101,10 +100,13 @@ handle_info(_Info, State) ->
 %% ------------------------------------
 
 choose_column(Board, Color) -> %wybor najlepszej kolumny (liczymy wartosci dla kolejnych mozliwych ruchow, wybieramy najlepszy ruch (kolumne))
-    choose_column(Board, Color, 1, 0, 0).
+    %choose_column(Board, Color, 1, 0, 0).
+    mainMaxAB(Board, 1, 6, -17, 17, Color, 1).
     
 choose_column(Board, Color, 8, BestVal, BestCol) ->
-    MyVal = computeVal(Board, Color, 8),
+    %MyVal = computeVal(Board, Color, 8),
+    MyVal = alphabeta(Board, 8, 4, -17, 17, getOppColor(Color), Color),
+    %MyVal = minimax(Board, 8, 4, Color),
     if
         MyVal > BestVal ->
             {MyVal, 8};
@@ -117,7 +119,9 @@ choose_column(Board, Color, 8, BestVal, BestCol) ->
             {BestVal, BestCol}
     end;
 choose_column(Board, Color, Col, BestVal, BestCol) ->
-    MyVal = computeVal(Board, Color, Col),
+    %MyVal = computeVal(Board, Color, Col),
+    MyVal = alphabeta(Board, Col, 4, -17, 17, getOppColor(Color), Color),
+    %MyVal = minimax(Board, Col, 4, Color),
     if
         MyVal > BestVal ->
             choose_column(Board, Color, Col+1, MyVal, Col);
@@ -201,7 +205,66 @@ checkWinningMove(Board, Color, Column) -> %sprawdzenie czy mozemy doprowadzic do
 			end;
 		true -> no
 	end.
+
+alphabeta(Board, Column, 0, _A, _B, Color, _MyColor) -> 
+	computeVal(Board, Color, Column);
+
+alphabeta(Board, Column, Depth, A, B, Color, MyColor) when Color == MyColor ->
+	case common:drop(Column, Board, Color) of
+		false -> -17;
+		{win, _, _} -> 17;
+		{ok, NewBoard, _Max} -> maxAB(NewBoard, 1, Depth - 1, A, B, getOppColor(Color), MyColor)
+	end;
 		
+alphabeta(Board, Column, Depth, A, B, Color, MyColor) ->
+	case common:drop(Column, Board, Color) of
+		false -> -17;
+		{win, _, _} -> 17;
+		{ok, NewBoard, _Max} -> minAB(NewBoard, 1, Depth - 1, A, B, getOppColor(Color), MyColor)
+	end.
+
+
+maxAB(_Board, 9, _Depth, A, _B, _Color, _MyColor) -> A;
+
+maxAB(Board, Column, Depth, A, B, Color, MyColor) ->
+	AB = alphabeta(Board, Column, Depth, A, B, Color, MyColor),
+	NewA = erlang:max(AB, A),
+	if 
+		B =< NewA -> NewA;
+		true -> maxAB(Board, Column + 1, Depth, NewA, B, Color, MyColor)
+	end. 
+
+
+minAB(_Board, 9, _Depth, _A, B, _Color, _MyColor) -> B;
+
+minAB(Board, Column, Depth, A, B, Color, MyColor) ->
+	AB = alphabeta(Board, Column, Depth, A, B, Color, MyColor),
+	NewB = erlang:min(AB, B),
+	if 
+		NewB =< A -> NewB;
+		true -> minAB(Board, Column + 1, Depth, A, NewB, Color, MyColor)
+	end. 
+
+
+mainMaxAB(_Board, 9, _Depth, A, _B, _MyColor, Best) -> {A, Best};
+
+mainMaxAB(Board, Column, Depth, A, B, MyColor, Best) ->
+	AB = alphabeta(Board, Column, Depth, A, B, getOppColor(MyColor), MyColor),
+	{NewA, NewBest} = 
+	if
+		AB > A -> {AB, Column};
+		AB == A -> 
+			case random:uniform(2) of
+				1 -> {AB, Column};
+				_ -> {A, Best}
+			end;
+		true -> {A, Best}
+	end,
+	if
+		B =< NewA -> {NewA, NewBest};
+		true -> mainMaxAB(Board, Column + 1, Depth, NewA, B, MyColor, NewBest)
+	end.
+
 
 
 
